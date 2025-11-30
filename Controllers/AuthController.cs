@@ -1,13 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Seguridad_API.Data;
 using Seguridad_API.DTOs;
 using Seguridad_API.Models;
-using System.Security.Cryptography;
-using System.Text;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
+using Seguridad_API.Services; // <- asegurarse
 
 namespace Seguridad_API.Controllers
 {
@@ -15,103 +12,66 @@ namespace Seguridad_API.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly AppDbContext _context;
+        private readonly UsuarioService _usuarioService;
         private readonly IConfiguration _config;
 
-        public AuthController(AppDbContext context, IConfiguration config)
+        public AuthController(UsuarioService usuarioService, IConfiguration config)
         {
-            _context = context;
+            _usuarioService = usuarioService;
             _config = config;
         }
 
-        // -------------------------------
-        //  REGISTRO
-        // -------------------------------
         [HttpPost("register")]
-        public async Task<IActionResult> Register(UsuarioRegistroDTO request)
+        public async Task<IActionResult> Register(UsuarioRegistroDTO req)
         {
-            // Verificar si ya existe
-            if (await _context.Usuarios.AnyAsync(u => u.NombreUsuario == request.NombreUsuario))
-                return BadRequest("El usuario ya existe");
+            if (await _usuarioService.UsuarioExiste(req.NombreUsuario))
+                return BadRequest(new { message = "El usuario ya existe" });
 
-            // Convertir password a Hash seguro
-            string passwordHash = HashPassword(request.Password);
-
-            var usuario = new Usuario
-            {
-                NombreUsuario = request.NombreUsuario,
-                PasswordHash = passwordHash
-            };
-
-            _context.Usuarios.Add(usuario);
-            await _context.SaveChangesAsync();
-
-            return Ok("Usuario registrado correctamente");
+            await _usuarioService.CrearUsuario(req.NombreUsuario, req.Password);
+            return Ok(new { message = "Usuario registrado correctamente" });
         }
 
-        // -------------------------------
-        //  LOGIN
-        // -------------------------------
         [HttpPost("login")]
-        public async Task<IActionResult> Login(UsuarioLoginDTO request)
+        public async Task<IActionResult> Login(UsuarioLoginDTO req)
         {
-            var user = await _context.Usuarios
-                .FirstOrDefaultAsync(u => u.NombreUsuario == request.NombreUsuario);
+            var user = await _usuarioService.GetUsuario(req.NombreUsuario);
+            if (user == null) return BadRequest(new { message = "Usuario no encontrado" });
 
-            if (user == null)
-                return BadRequest("Usuario no encontrado");
+            if (!_usuarioService.VerificarPassword(req.Password, user.PasswordHash))
+                return BadRequest(new { message = "Contraseña incorrecta" });
 
-            if (!VerifyPassword(request.Password, user.PasswordHash))
-                return BadRequest("Contraseña incorrecta");
-
+            // Aquí generas token (mismo CreateToken que ya tenías)
             string token = CreateToken(user);
-
-            return Ok(new
-            {
-                mensaje = "Login correcto",
-                token
-            });
+            return Ok(new { token });
         }
 
-        // -------------------------------
-        //  GENERAR HASH
-        // -------------------------------
-        private string HashPassword(string password)
-        {
-            using var hmac = new HMACSHA256();
-            return Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(password)));
-        }
-
-        private bool VerifyPassword(string password, string hash)
-        {
-            using var hmac = new HMACSHA256();
-            var computed = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
-            return Convert.ToBase64String(computed) == hash;
-        }
-
-        // -------------------------------
-        //  CREAR JWT
-        // -------------------------------
         private string CreateToken(Usuario user)
         {
-            List<Claim> claims = new()
-            {
-                new Claim(ClaimTypes.Name, user.NombreUsuario)
+            var claims = new List<System.Security.Claims.Claim> {
+                new(System.Security.Claims.ClaimTypes.Name, user.NombreUsuario)
             };
 
-            var key = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(_config["Jwt:Key"])
-            );
+            var key = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
+                System.Text.Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
 
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
+            var creds = new Microsoft.IdentityModel.Tokens.SigningCredentials(key,
+                Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha512Signature);
 
-            var token = new JwtSecurityToken(
-                claims: claims,
-                expires: DateTime.Now.AddHours(5),
-                signingCredentials: creds
-            );
+            var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
+                claims: claims, expires: DateTime.Now.AddHours(5), signingCredentials: creds);
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            return new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);
         }
+
+        // Endpoint protegido
+        [Authorize]
+        [HttpGet("perfil")]
+        public ActionResult<string> Perfil()
+        {
+            var username = User.Identity?.Name;
+
+            return Ok($"Usuario autenticado: {username}");
+        }
+
     }
 }
