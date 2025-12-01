@@ -1,10 +1,14 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Seguridad_API.Data;
 using Seguridad_API.DTOs;
 using Seguridad_API.Models;
 using Seguridad_API.Services; // <- asegurarse
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace Seguridad_API.Controllers
 {
@@ -47,21 +51,26 @@ namespace Seguridad_API.Controllers
 
         private string CreateToken(Usuario user)
         {
-            var claims = new List<System.Security.Claims.Claim> {
-                new(System.Security.Claims.ClaimTypes.Name, user.NombreUsuario)
-            };
+            var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.Name, user.NombreUsuario)
+    };
 
-            var key = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
-                System.Text.Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
 
-            var creds = new Microsoft.IdentityModel.Tokens.SigningCredentials(key,
-                Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha512Signature);
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512);
 
-            var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
-                claims: claims, expires: DateTime.Now.AddHours(5), signingCredentials: creds);
+            var token = new JwtSecurityToken(
+                issuer: _config["Jwt:Issuer"],
+                audience: _config["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddMinutes(60),
+                signingCredentials: creds
+            );
 
-            return new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
+
 
         // Endpoint protegido
         [Authorize]
