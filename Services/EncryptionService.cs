@@ -6,48 +6,57 @@ namespace Seguridad_API.Services
     public class EncryptionService
     {
         private readonly byte[] _key;
-        private readonly byte[] _iv;
 
         public EncryptionService(IConfiguration config)
         {
             _key = Encoding.UTF8.GetBytes(config["Encryption:Key"]);
-            _iv = Encoding.UTF8.GetBytes(config["Encryption:IV"]);
+
+            if (_key.Length != 32)
+                throw new Exception("La llave debe tener exactamente 32 caracteres para AES-256.");
         }
 
         public string Encrypt(string plainText)
         {
             using var aes = Aes.Create();
             aes.Key = _key;
-            aes.IV = _iv;
+            aes.GenerateIV(); // ⚠ Genera IV aleatorio
 
-            var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-
+            using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
             using var ms = new MemoryStream();
-            using var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write);
-            using var sw = new StreamWriter(cs);
+            using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+            using (var sw = new StreamWriter(cs))
+            {
+                sw.Write(plainText);
+            }
 
-            sw.Write(plainText);
-            sw.Close();
+            var cipherBytes = ms.ToArray();
 
-            return Convert.ToBase64String(ms.ToArray());
+            // ✔ Devolver IV + Cipher en una sola cadena Base64
+            var result = aes.IV.Concat(cipherBytes).ToArray();
+
+            return Convert.ToBase64String(result);
         }
 
-        public string Decrypt(string cipherText)
+        public string Decrypt(string cipherTextBase64)
         {
-            var buffer = Convert.FromBase64String(cipherText);
+            var fullCipher = Convert.FromBase64String(cipherTextBase64);
+
+            // ✔ Recuperar IV (primeros 16 bytes)
+            var iv = fullCipher.Take(16).ToArray();
+
+            // ✔ Recuperar cipherText (resto)
+            var cipher = fullCipher.Skip(16).ToArray();
 
             using var aes = Aes.Create();
             aes.Key = _key;
-            aes.IV = _iv;
+            aes.IV = iv;
 
-            var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-
-            using var ms = new MemoryStream(buffer);
+            using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+            using var ms = new MemoryStream(cipher);
             using var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read);
             using var sr = new StreamReader(cs);
 
             return sr.ReadToEnd();
         }
-
     }
 }

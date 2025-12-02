@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Seguridad_API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/crypto")]
     [ApiController]
     public class EncryptionController : ControllerBase
     {
@@ -17,18 +17,28 @@ namespace Seguridad_API.Controllers
 
         [Authorize]
         [HttpPost("encrypt")]
-        public IActionResult Encrypt([FromBody] string text)
+        public IActionResult Encrypt([FromBody] EncryptRequest request)
         {
-            var encrypted = _encryptService.Encrypt(text);
-            return Ok(new { original = text, encrypted });
+            var encrypted = _encryptService.Encrypt(request.Texto);
+            return Ok(new { original = request.Texto, encrypted });
         }
 
         [Authorize]
         [HttpPost("decrypt")]
-        public IActionResult Decrypt([FromBody] string encryptedText)
+        public IActionResult Decrypt([FromBody] DecryptRequest request)
         {
-            var decrypted = _encryptService.Decrypt(encryptedText);
-            return Ok(new { encrypted = encryptedText, decrypted });
+            var decrypted = _encryptService.Decrypt(request.TextoEncriptado);
+            return Ok(new { encrypted = request.TextoEncriptado, decrypted });
         }
+    }
+
+    public class EncryptRequest
+    {
+        public string Texto { get; set; }
+    }
+
+    public class DecryptRequest
+    {
+        public string TextoEncriptado { get; set; }
     }
 }
