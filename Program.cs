@@ -17,39 +17,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Controllers y Swagger
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
-{
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
-    {
-        Title = "API con JWT",
-        Version = "v1"
-    });
-
-    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-    {
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description = "Usa Bearer {token}",
-        Name = "Authorization",
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT"
-    });
-
-    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
-    {
-        {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-            {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            new string[] {}
-        }
-    });
-});
+builder.Services.AddSwaggerGen();
 
 builder.Services.AddScoped<UsuarioService>();
 builder.Services.AddScoped<EncryptionService>();
@@ -72,20 +40,30 @@ builder.Services.AddAuthentication("Bearer")
         };
     });
 
-// CORS CORRECTO
+
+// ***************
+// 🔥 CORS FIX NGROK
+// ***************
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
     {
         policy
-            .WithOrigins("http://localhost:4200")   // Angular
+            .WithOrigins(
+                "http://localhost:4200",
+                "https://nonrescissory-keturah-unshafted.ngrok-free.dev"
+            )
             .AllowAnyHeader()
-            .AllowAnyMethod();
-        // 👈 Remove AllowCredentials, Remove SetIsOriginAllowed
+            .AllowAnyMethod()
+            .AllowCredentials()
+            // ⚠ Permite subdominios dinámicos de ngrok (importante)
+            .SetIsOriginAllowed(origin => origin.Contains("ngrok"));
     });
 });
 
+
 var app = builder.Build();
+
 
 // Swagger
 if (app.Environment.IsDevelopment())
@@ -94,13 +72,14 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// CORS debe ir aquí
-app.UseCors("AllowAngular");
+app.UseRouting();
 
-app.UseHttpsRedirection();
+// ⚠ CORS SIEMPRE ANTES DE AUTH
+app.UseCors("AllowAngular");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
 app.Run();
