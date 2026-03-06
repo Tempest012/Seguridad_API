@@ -5,6 +5,8 @@ VisualStudioVersion = 17.12.35527.113 d17.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Seguridad_API", "Seguridad_API.csproj", "{2BDE8D80-AEE2-4F89-BB74-49A48053D0F3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Seguridad_API.Tests", "Seguridad_API.Tests\Seguridad_API.Tests.csproj", "{4C68D20B-878E-49B5-B282-16E17E9537E7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{2BDE8D80-AEE2-4F89-BB74-49A48053D0F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2BDE8D80-AEE2-4F89-BB74-49A48053D0F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2BDE8D80-AEE2-4F89-BB74-49A48053D0F3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4C68D20B-878E-49B5-B282-16E17E9537E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4C68D20B-878E-49B5-B282-16E17E9537E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4C68D20B-878E-49B5-B282-16E17E9537E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4C68D20B-878E-49B5-B282-16E17E9537E7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
