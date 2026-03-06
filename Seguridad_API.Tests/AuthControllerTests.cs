@@ -57,6 +57,36 @@ public class AuthControllerTests
         Assert.IsType<OkObjectResult>(result);
     }
 
+    //Seguridad: no se debe permitir registro con nombre de usuario vacío.
+    // Falla hasta que AuthController valide y devuelva BadRequest.
+    [Fact]
+    public async Task Register_ConNombreUsuarioVacio_DevuelveBadRequest()
+    {
+        await using var context = CrearContextoEnMemoria();
+        var service = new UsuarioService(context);
+        var controller = new AuthController(service, ConfigJwt());
+        var dto = new UsuarioRegistroDTO { NombreUsuario = "", Password = "pass123" };
+
+        var result = await controller.Register(dto);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    //Seguridad: no se debe permitir registro con contraseña vacía.
+    // Falla hasta que AuthController valide y devuelva BadRequest.
+    [Fact]
+    public async Task Register_ConPasswordVacio_DevuelveBadRequest()
+    {
+        await using var context = CrearContextoEnMemoria();
+        var service = new UsuarioService(context);
+        var controller = new AuthController(service, ConfigJwt());
+        var dto = new UsuarioRegistroDTO { NombreUsuario = "user", Password = "" };
+
+        var result = await controller.Register(dto);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
     [Fact]
     public async Task Login_DevuelveBadRequest_SiUsuarioNoExiste()
     {
